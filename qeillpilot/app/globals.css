@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-image: radial-gradient(circle at 1px 1px, #00000008 1px, transparent 0);
+  background-size: 22px 22px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+.font-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* レシート風の punch ノッチ（提案結果カードのシグネチャー要素） */
+.receipt-edge {
+  position: relative;
+}
+
+.receipt-edge::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: 28px;
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: #fbfaf8;
+  box-shadow: inset 0 0 0 1px #e6e4df;
+}
+
+.receipt-edge::after {
+  content: "";
+  position: absolute;
+  right: -10px;
+  top: 28px;
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: #fbfaf8;
+  box-shadow: inset 0 0 0 1px #e6e4df;
+}
+
+.tear-line {
+  background-image: repeating-linear-gradient(90deg, #c9c6bd 0, #c9c6bd 6px, transparent 6px, transparent 14px);
+  height: 1px;
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid #2f5dff;
+  outline-offset: 2px;
+}
