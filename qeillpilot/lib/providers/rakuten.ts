@@ -1,6 +1,8 @@
 import type { ProductCandidate } from "@/lib/types";
 
-const RAKUTEN_ENDPOINT = "https://app.rakuten.co.jp/services/api/IchibaItem/Search/20220601";
+// 2026年5月に楽天側の旧API（app.rakuten.co.jp）が完全停止し、新API（openapi.rakuten.co.jp）に移行済み。
+// 新APIは applicationId に加えて accessKey が必須、かつ Referer ヘッダーが必須。
+const RAKUTEN_ENDPOINT = "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20220601";
 
 function mockResults(keywords: string): ProductCandidate[] {
   const base = 14000;
@@ -19,25 +21,35 @@ function mockResults(keywords: string): ProductCandidate[] {
   }));
 }
 
-// 日本のみ対応。楽天市場商品検索APIはアプリIDのみで呼び出せる（署名不要）。
+// 日本のみ対応。新API（2026年仕様）は applicationId + accessKey の両方が必須。
 export async function searchRakuten(keywords: string): Promise<ProductCandidate[]> {
   const appId = process.env.RAKUTEN_APP_ID;
+  const accessKey = process.env.RAKUTEN_ACCESS_KEY;
 
-  if (!appId) {
+  if (!appId || !accessKey) {
     return mockResults(keywords);
   }
 
   try {
     const url = new URL(RAKUTEN_ENDPOINT);
     url.searchParams.set("applicationId", appId);
+    url.searchParams.set("accessKey", accessKey);
     url.searchParams.set("keyword", keywords);
     url.searchParams.set("hits", "5");
     url.searchParams.set("sort", "-reviewCount");
+    url.searchParams.set("format", "json");
     if (process.env.RAKUTEN_AFFILIATE_ID) {
       url.searchParams.set("affiliateId", process.env.RAKUTEN_AFFILIATE_ID);
     }
 
-    const res = await fetch(url.toString(), { next: { revalidate: 0 } });
+    const res = await fetch(url.toString(), {
+      next: { revalidate: 0 },
+      headers: {
+        // 新APIはReferer必須。楽天側のアプリ設定「許可されたWebサイト」にも
+        // 本番ドメイン（例: https://qeill.vercel.app）を登録しておく必要がある。
+        Referer: process.env.NEXT_PUBLIC_SITE_URL || "https://qeill.vercel.app"
+      }
+    });
     if (!res.ok) {
       console.error("Rakuten API error", res.status, await res.text());
       return mockResults(keywords);
