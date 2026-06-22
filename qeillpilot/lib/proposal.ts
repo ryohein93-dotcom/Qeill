@@ -41,7 +41,7 @@ export async function buildProposal(input: BuildProposalInput): Promise<BuildPro
   const items: SelectedProduct[] = [];
   for (let i = 0; i < plan.categories.length; i++) {
     const cat = plan.categories[i];
-    if (i > 0) await sleep(350);
+    if (i > 0) await sleep(1200);
 
     const candidates = await searchProducts(cat.searchKeywords, input.country);
     if (candidates.length === 0) continue;
