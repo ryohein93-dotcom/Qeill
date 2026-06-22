@@ -9,6 +9,10 @@ const COUNTRY_LABEL: Record<CountryCode, string> = {
   GB: "イギリス"
 };
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export interface BuildProposalInput {
   history: ChatTurn[];
   totalBudget: number | null;
@@ -33,35 +37,38 @@ export async function buildProposal(input: BuildProposalInput): Promise<BuildPro
 
   const userIntent = input.history.filter((h) => h.role === "user").map((h) => h.content).join("\n");
 
-  const items: SelectedProduct[] = await Promise.all(
-    plan.categories.map(async (cat): Promise<SelectedProduct | null> => {
-      const candidates = await searchProducts(cat.searchKeywords, input.country);
-      if (candidates.length === 0) return null;
+  // 楽天APIのレート制限対策として、カテゴリごとに同時並行ではなく少し間隔を空けて順番に処理する。
+  const items: SelectedProduct[] = [];
+  for (let i = 0; i < plan.categories.length; i++) {
+    const cat = plan.categories[i];
+    if (i > 0) await sleep(350);
 
-      const { selectedProductId, reason } = await selectBestProduct(
-        cat.category,
-        userIntent,
-        candidates,
-        input.locale
-      );
+    const candidates = await searchProducts(cat.searchKeywords, input.country);
+    if (candidates.length === 0) continue;
 
-      const chosen = candidates.find((c) => c.id === selectedProductId) ?? candidates[0];
+    const { selectedProductId, reason } = await selectBestProduct(
+      cat.category,
+      userIntent,
+      candidates,
+      input.locale
+    );
 
-      // 同一カテゴリ内で他ショップの価格があれば比較情報として添える（日本のみ複数ショップ）
-      const alternatives = candidates
-        .filter((c) => c.id !== chosen.id && c.shop !== chosen.shop)
-        .slice(0, 1)
-        .map((c) => ({ shop: c.shop, shopName: c.shopName, price: c.price, url: c.url }));
+    const chosen = candidates.find((c) => c.id === selectedProductId) ?? candidates[0];
 
-      return {
-        category: cat.category,
-        product: chosen,
-        alternativePrices: alternatives.length ? alternatives : undefined,
-        reason,
-        allocatedBudget: cat.allocatedBudget
-      };
-    })
-  ).then((results) => results.filter((r): r is SelectedProduct => r !== null));
+    // 同一カテゴリ内で他ショップの価格があれば比較情報として添える（日本のみ複数ショップ）
+    const alternatives = candidates
+      .filter((c) => c.id !== chosen.id && c.shop !== chosen.shop)
+      .slice(0, 1)
+      .map((c) => ({ shop: c.shop, shopName: c.shopName, price: c.price, url: c.url }));
+
+    items.push({
+      category: cat.category,
+      product: chosen,
+      alternativePrices: alternatives.length ? alternatives : undefined,
+      reason,
+      allocatedBudget: cat.allocatedBudget
+    });
+  }
 
   const totalPrice = items.reduce((sum, item) => sum + item.product.price, 0);
   const totalBudget = input.totalBudget ?? plan.categories.reduce((s, c) => s + c.allocatedBudget, 0);
