@@ -43,11 +43,12 @@ export async function searchRakuten(keywords: string): Promise<ProductCandidate[
     }
 
     const res = await fetch(url.toString(), {
-      next: { revalidate: 0 },
+      cache: "no-store",
       headers: {
         // 新APIはReferer必須。楽天側のアプリ設定「許可されたWebサイト」にも
-        // 本番ドメイン（例: https://qeill.vercel.app）を登録しておく必要がある。
-        Referer: process.env.NEXT_PUBLIC_SITE_URL || "https://qeill.vercel.app"
+        // 本番ドメイン（例: https://qeill.vercel.app）を完全一致で登録しておく必要がある。
+        referer: process.env.NEXT_PUBLIC_SITE_URL || "https://qeill.vercel.app",
+        origin: process.env.NEXT_PUBLIC_SITE_URL || "https://qeill.vercel.app"
       }
     });
     if (!res.ok) {
